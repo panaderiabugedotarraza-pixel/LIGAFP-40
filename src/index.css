@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Lexend", sans-serif;
+  
+  --color-primary: #95aaff;
+  --color-primary-dim: #3766ff;
+  --color-secondary: #c3f400;
+  --color-background: #141414;
+  --color-surface: #1c1c1c;
+  --color-surface-high: #242424;
+  --color-surface-highest: #303030;
+  --color-on-surface: #ffffff;
+  --color-on-surface-variant: #adaaaa;
+  --color-outline-variant: #484847;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-surface font-sans;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline;
+  }
+}
+
+.neon-glow-primary {
+  text-shadow: 0 0 10px rgba(149, 170, 255, 0.5);
+}
+
+.neon-glow-secondary {
+  text-shadow: 0 0 10px rgba(195, 244, 0, 0.5);
+}
+
+.glass-panel {
+  background: rgba(26, 26, 26, 0.8);
+  backdrop-filter: blur(12px);
+}
