@@ -28,11 +28,11 @@ export default function Teams() {
         )}
       </AnimatePresence>
 
-      <header className="text-center space-y-4">
+      <header className="text-center space-y-4 px-4">
         <motion.h1 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl md:text-7xl font-headline font-extrabold tracking-tighter"
+          className="text-4xl sm:text-5xl md:text-7xl font-headline font-extrabold tracking-tighter"
         >
           EQUIPOS <span className="text-primary neon-glow-primary">OFICIALES</span>
         </motion.h1>
@@ -40,7 +40,7 @@ export default function Teams() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-on-surface-variant text-lg max-w-2xl mx-auto"
+          className="text-on-surface-variant text-base md:text-lg max-w-2xl mx-auto"
         >
           Conoce a las parejas que competirán en la edición 2026 de la Liga FP+40.
         </motion.p>
@@ -194,7 +194,7 @@ const FifaCardModal = ({ data, onClose, isChampion }: { data: {player: any, team
         animate={{ opacity: 1, scale: 1, rotateY: 0 }}
         exit={{ opacity: 0, scale: 0.8, rotateY: -90 }}
         transition={{ type: 'spring', damping: 20 }}
-        className="relative z-10"
+        className="relative z-10 scale-[0.85] sm:scale-100"
       >
         {/* FIFA Card Container */}
         <div className={`relative w-72 h-[420px] bg-gradient-to-b ${isChampion ? 'from-[#f0d88d] via-[#d4af37] to-[#b8860b]' : 'from-primary/80 via-primary/40 to-primary/80'} rounded-[20px] p-1 shadow-[0_0_50px_rgba(0,0,0,0.5)] border-2 ${isChampion ? 'border-[#f0d88d]' : 'border-primary/50'}`}>

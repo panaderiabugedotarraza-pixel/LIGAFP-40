@@ -45,7 +45,7 @@ export default function Calendar() {
     });
   };
 
-  const handleUpdateResult = (e: React.FormEvent) => {
+  const handleUpdateResult = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resultData.mvpPlayerId) {
       alert('Por favor, selecciona al MVP del partido.');
@@ -73,7 +73,7 @@ export default function Calendar() {
         : undefined
     };
 
-    updateMatchResult(selectedMatch.id, score1, score2, resultData.mvpPlayerId, setScores);
+    await updateMatchResult(selectedMatch.id, score1, score2, resultData.mvpPlayerId, setScores);
     setSelectedMatch(null);
     setResultData({ 
       s1_1: 0, s1_2: 0, 
@@ -153,11 +153,6 @@ export default function Calendar() {
           <h1 className="text-4xl md:text-5xl font-extrabold font-headline leading-none mb-4">
             Calendario <span className="text-primary neon-glow-primary">Oficial</span>
           </h1>
-          <p className="text-on-surface-variant max-w-xl">
-            {schedule.length > 0 
-              ? `La liga está en marcha con ${teams.length} parejas. Formato Todos contra Todos.`
-              : `Se requiere un mínimo de 6 parejas y un máximo de 8 para iniciar el sorteo. Actualmente hay ${teams.length} parejas listas.`}
-          </p>
         </motion.div>
 
         <motion.div 
@@ -173,7 +168,7 @@ export default function Calendar() {
                 <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest">Sorteo de Liga</h3>
               </div>
               <button 
-                onClick={generateSchedule}
+                onClick={async () => await generateSchedule()}
                 disabled={teams.length < 6 || teams.length > 8}
                 className={`w-full py-4 rounded-xl font-headline font-black text-lg transition-all shadow-lg ${
                   teams.length >= 6 && teams.length <= 8 
@@ -282,51 +277,51 @@ export default function Calendar() {
                             )}
                           </div>
                           
-                          <div className="flex items-center justify-between gap-4 relative">
+                          <div className="flex flex-row items-center justify-between gap-2 md:gap-4 relative">
                             {/* Team 1 */}
-                            <div className="flex-1 flex flex-col items-center text-center space-y-3">
-                              <div className="flex -space-x-3">
+                            <div className="flex-1 flex flex-col items-center text-center space-y-2 md:space-y-3">
+                              <div className="flex -space-x-2 md:-space-x-3">
                                 {match.team1.players.map((p, i) => (
-                                  <div key={i} className="w-12 h-12 rounded-full border-2 border-surface overflow-hidden bg-surface-high shadow-lg">
+                                  <div key={i} className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-surface overflow-hidden bg-surface-high shadow-lg">
                                     {p.photo ? (
                                       <img src={p.photo} alt="" className="w-full h-full object-cover" />
                                     ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant"><User size={18} /></div>
+                                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant"><User size={16} /></div>
                                     )}
                                   </div>
                                 ))}
                               </div>
                               <div className="space-y-0.5">
-                                <p className="font-headline font-bold text-sm text-white uppercase tracking-tight">{match.team1.name}</p>
-                                <p className="text-[9px] text-on-surface-variant font-medium truncate max-w-[120px]">
+                                <p className="font-headline font-bold text-[10px] md:text-sm text-white uppercase tracking-tight line-clamp-1">{match.team1.name}</p>
+                                <p className="text-[8px] md:text-[9px] text-on-surface-variant font-medium truncate max-w-[80px] md:max-w-[120px]">
                                   {match.team1.players[0].fullName.split(' ')[0]} & {match.team1.players[1].fullName.split(' ')[0]}
                                 </p>
                               </div>
                             </div>
 
                             {/* VS Divider */}
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="w-px h-8 bg-gradient-to-b from-transparent via-outline-variant/20 to-transparent"></div>
-                              <div className="w-8 h-8 rounded-full bg-surface-high border border-outline-variant/10 flex items-center justify-center text-[10px] font-black text-on-surface-variant italic">VS</div>
-                              <div className="w-px h-8 bg-gradient-to-t from-transparent via-outline-variant/20 to-transparent"></div>
+                            <div className="flex flex-col items-center gap-1 md:gap-2">
+                              <div className="w-px h-6 md:h-8 bg-gradient-to-b from-transparent via-outline-variant/20 to-transparent"></div>
+                              <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-surface-high border border-outline-variant/10 flex items-center justify-center text-[8px] md:text-[10px] font-black text-on-surface-variant italic">VS</div>
+                              <div className="w-px h-6 md:h-8 bg-gradient-to-t from-transparent via-outline-variant/20 to-transparent"></div>
                             </div>
 
                             {/* Team 2 */}
-                            <div className="flex-1 flex flex-col items-center text-center space-y-3">
-                              <div className="flex -space-x-3">
+                            <div className="flex-1 flex flex-col items-center text-center space-y-2 md:space-y-3">
+                              <div className="flex -space-x-2 md:-space-x-3">
                                 {match.team2.players.map((p, i) => (
-                                  <div key={i} className="w-12 h-12 rounded-full border-2 border-surface overflow-hidden bg-surface-high shadow-lg">
+                                  <div key={i} className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-surface overflow-hidden bg-surface-high shadow-lg">
                                     {p.photo ? (
                                       <img src={p.photo} alt="" className="w-full h-full object-cover" />
                                     ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant"><User size={18} /></div>
+                                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant"><User size={16} /></div>
                                     )}
                                   </div>
                                 ))}
                               </div>
                               <div className="space-y-0.5">
-                                <p className="font-headline font-bold text-sm text-white uppercase tracking-tight">{match.team2.name}</p>
-                                <p className="text-[9px] text-on-surface-variant font-medium truncate max-w-[120px]">
+                                <p className="font-headline font-bold text-[10px] md:text-sm text-white uppercase tracking-tight line-clamp-1">{match.team2.name}</p>
+                                <p className="text-[8px] md:text-[9px] text-on-surface-variant font-medium truncate max-w-[80px] md:max-w-[120px]">
                                   {match.team2.players[0].fullName.split(' ')[0]} & {match.team2.players[1].fullName.split(' ')[0]}
                                 </p>
                               </div>
@@ -544,12 +539,12 @@ export default function Calendar() {
       </AnimatePresence>
 
       {/* Rules Bento */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <section className="grid grid-cols-1 gap-6">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="md:col-span-1 bg-gradient-to-br from-surface to-surface-highest p-8 rounded-2xl border border-outline-variant/10"
+          className="bg-gradient-to-br from-surface to-surface-highest p-8 rounded-2xl border border-outline-variant/10"
         >
           <h3 className="text-lg font-headline font-bold mb-6 flex items-center gap-2">
             <RefreshCw size={20} className="text-secondary" />
@@ -567,47 +562,6 @@ export default function Calendar() {
               </li>
             ))}
           </ul>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="md:col-span-2 bg-surface p-8 rounded-2xl border border-outline-variant/10 flex flex-col justify-center"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-headline font-bold">Gestión de la Jornada</h3>
-            <div className="flex gap-2">
-              <button 
-                onClick={handleDownload}
-                className="bg-surface-highest p-2 rounded-lg hover:bg-primary/20 transition-colors"
-              >
-                <Download size={16} />
-              </button>
-              <button 
-                onClick={handleShare}
-                className="bg-surface-highest p-2 rounded-lg hover:bg-primary/20 transition-colors"
-              >
-                <Share2 size={16} />
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="p-4 bg-surface-high rounded-xl border border-outline-variant/10">
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Sede Oficial</p>
-              <div className="flex items-center gap-3">
-                <MapPin size={20} className="text-primary" />
-                <span className="font-headline font-bold">FullPadel</span>
-              </div>
-            </div>
-            <div className="p-4 bg-surface-high rounded-xl border border-outline-variant/10">
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Horario Fijo</p>
-              <div className="flex items-center gap-3">
-                <Clock size={20} className="text-secondary" />
-                <span className="font-headline font-bold">19:30 HS</span>
-              </div>
-            </div>
-          </div>
         </motion.div>
       </section>
     </div>

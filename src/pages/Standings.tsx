@@ -90,7 +90,7 @@ export default function Standings() {
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-surface-high/50 text-on-surface-variant text-xs font-bold uppercase tracking-widest">
@@ -108,7 +108,7 @@ export default function Standings() {
             <tbody className="divide-y divide-surface-highest">
               {sortedTeams.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-on-surface-variant italic">
+                  <td colSpan={9} className="px-6 py-12 text-center text-on-surface-variant italic">
                     La liga aún no ha comenzado. Registra tu equipo para aparecer en la tabla.
                   </td>
                 </tr>
@@ -164,6 +164,56 @@ export default function Standings() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile View - Cards */}
+        <div className="md:hidden divide-y divide-surface-highest">
+          {sortedTeams.length === 0 ? (
+            <div className="px-6 py-12 text-center text-on-surface-variant italic">
+              La liga aún no ha comenzado.
+            </div>
+          ) : (
+            sortedTeams.map((team, idx) => (
+              <div key={team.id} className="p-4 space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <span className="font-headline font-black text-2xl text-primary/50">{(idx + 1).toString().padStart(2, '0')}</span>
+                    <div className="flex flex-col">
+                      <span className="font-headline font-bold text-white uppercase tracking-tight">{team.name}</span>
+                      <div className="flex gap-1 mt-1">
+                        {team.stats.form.map((f, i) => (
+                          <div key={i} className={`w-1.5 h-1.5 rounded-full ${f === 'W' ? 'bg-secondary' : 'bg-error-dim'}`}></div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Puntos</span>
+                    <span className="text-2xl font-headline font-black text-secondary">{team.stats.pts}</span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="bg-surface-high p-2 rounded-lg text-center">
+                    <span className="block text-[8px] font-bold text-on-surface-variant uppercase">MP</span>
+                    <span className="text-sm font-bold">{team.stats.mp}</span>
+                  </div>
+                  <div className="bg-surface-high p-2 rounded-lg text-center">
+                    <span className="block text-[8px] font-bold text-on-surface-variant uppercase">W</span>
+                    <span className="text-sm font-bold text-primary">{team.stats.w}</span>
+                  </div>
+                  <div className="bg-surface-high p-2 rounded-lg text-center">
+                    <span className="block text-[8px] font-bold text-on-surface-variant uppercase">Sets</span>
+                    <span className="text-[10px] font-bold">{team.stats.sw}-{team.stats.sl}</span>
+                  </div>
+                  <div className="bg-surface-high p-2 rounded-lg text-center">
+                    <span className="block text-[8px] font-bold text-on-surface-variant uppercase">MVP</span>
+                    <span className="text-sm font-bold text-secondary">{team.stats.mvps}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
         <div className="px-6 py-4 bg-surface-highest/30 flex justify-between items-center">
           <div className="flex gap-4 text-xs font-bold text-on-surface-variant">
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-secondary"></span> W - Victoria</span>
@@ -174,11 +224,9 @@ export default function Standings() {
       </motion.section>
 
       {/* Dynamic Team Insights Section */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 gap-4">
         {[
           { label: 'Jugador MVP', value: mvpPlayer?.fullName || '--', sub: `${mvpPlayer?.mvpCount || 0} MVPs` },
-          { label: 'Promedio Edad Liga', value: avgAge, sub: 'Años' },
-          { label: 'Equipos Activos', value: teams.length.toString(), sub: 'Grupos' }
         ].map((stat, i) => (
           <motion.div 
             key={stat.label}
@@ -190,7 +238,7 @@ export default function Standings() {
             <span className="text-on-surface-variant text-xs font-bold uppercase tracking-widest block mb-2">{stat.label}</span>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-headline font-extrabold truncate max-w-[70%]">{stat.value}</span>
-              <span className={`${i === 2 ? 'text-secondary' : 'text-primary'} font-bold`}>{stat.sub}</span>
+              <span className="text-primary font-bold">{stat.sub}</span>
             </div>
           </motion.div>
         ))}

@@ -1,0 +1,124 @@
+{
+  "entities": {
+    "Player": {
+      "title": "Player",
+      "description": "A player in the league",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "age": { "type": "string" },
+        "phone": { "type": "string" },
+        "teamName": { "type": "string" },
+        "photo": { "type": "string" },
+        "mvpCount": { "type": "number" },
+        "position": { "type": "string", "enum": ["Revés", "Drive"] }
+      },
+      "required": ["id", "fullName", "teamName"]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "A team in the league",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "players": { 
+          "type": "array",
+          "items": { "$ref": "Player" }
+        },
+        "level": { "type": "string" },
+        "rank": { "type": "string" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "mp": { "type": "number" },
+            "w": { "type": "number" },
+            "l": { "type": "number" },
+            "sw": { "type": "number" },
+            "sl": { "type": "number" },
+            "pts": { "type": "number" },
+            "mvps": { "type": "number" },
+            "form": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "required": ["id", "name", "players"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A match in the schedule",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "round": { "type": "number" },
+        "date": { "type": "string" },
+        "team1": { "$ref": "Team" },
+        "team2": { "$ref": "Team" },
+        "score1": { "type": "number" },
+        "score2": { "type": "number" },
+        "setScores": { "type": "object" },
+        "mvpPlayerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "finished"] }
+      },
+      "required": ["id", "round", "date", "team1", "team2", "status"]
+    },
+    "Replacement": {
+      "title": "Replacement",
+      "description": "A replacement player",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "photo": { "type": "string" }
+      },
+      "required": ["id", "fullName"]
+    },
+    "News": {
+      "title": "News",
+      "description": "A news item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "warning", "success"] }
+      },
+      "required": ["id", "text", "type"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global application settings",
+      "type": "object",
+      "properties": {
+        "groupPhotoUrl": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/pendingPlayers": {
+      "schema": "Player",
+      "description": "Players waiting for a partner"
+    },
+    "/teams": {
+      "schema": "Team",
+      "description": "Registered teams"
+    },
+    "/replacements": {
+      "schema": "Replacement",
+      "description": "Available replacement players"
+    },
+    "/schedule": {
+      "schema": "Match",
+      "description": "League schedule"
+    },
+    "/news": {
+      "schema": "News",
+      "description": "News ticker items"
+    },
+    "/settings": {
+      "schema": "Settings",
+      "description": "Global settings like group photo"
+    }
+  }
+}

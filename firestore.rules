@@ -1,0 +1,98 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: pendingPlayers
+// Fields: id, fullName, age, phone, teamName, photo, mvpCount, position
+//
+// Collection: teams
+// Fields: id, name, players (array of Player), level, rank, stats (object)
+//
+// Collection: replacements
+// Fields: id, fullName, phone, photo
+//
+// Collection: schedule
+// Fields: id, round, date, team1, team2, score1, score2, setScores, mvpPlayerId, status
+//
+// Collection: news
+// Fields: id, text, type
+//
+// Collection: settings
+// Document: global
+// Fields: groupPhotoUrl
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        ((request.auth.token.email == "ibugedo@gmail.com" || request.auth.token.email == "rodgarciac@gmail.com") && request.auth.token.email_verified == true);
+    }
+
+    function isValidString(val, min, max) {
+      return val is string && val.size() >= min && val.size() <= max;
+    }
+
+    function isValidNews(data) {
+      return data.keys().hasAll(['text', 'type']) &&
+             isValidString(data.text, 1, 500) &&
+             data.type in ['info', 'warning', 'success'];
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasOnly(['groupPhotoUrl']) &&
+             (data.groupPhotoUrl == null || isValidString(data.groupPhotoUrl, 1, 2000));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Public read access for league info, but only admin can write
+    match /pendingPlayers/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() || isAuthenticated(); // Allow users to register, but admin manages
+    }
+
+    match /teams/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /replacements/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /schedule/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /news/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidNews(request.resource.data);
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() && (docId == 'global' ? isValidSettings(request.resource.data) : false);
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -5,7 +5,7 @@ import { useLeague } from '../context/LeagueContext';
 import { AnimatePresence } from 'motion/react';
 
 export default function Home() {
-  const { teams, schedule, news } = useLeague();
+  const { teams, schedule, news, groupPhotoUrl } = useLeague();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
 
@@ -44,9 +44,9 @@ export default function Home() {
   };
 
   return (
-    <div className="space-y-12 pb-12">
+    <div className="space-y-8 md:space-y-12 pb-12">
       {/* Hero Banner */}
-      <section className="relative h-[400px] rounded-3xl overflow-hidden shadow-2xl">
+      <section className="relative h-[180px] md:h-[240px] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl">
         <img 
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrusnx-jUkVts0oAS7CZI-s_AQ7CAfUWPTqJtDFbSqIEYU3EnSyQk0j3GLkxCY06gIY5UP_YSXS4-jIWWAR1n7bvB9-QYiFayXl2b4U3XcoeUoBJqIHpSEiMqCRBbErTOsgzK-JEqPxirJbVkL4flqU0tw7SJJpnvs3jbSPHjU4UCjoRLuc5idCuKjJfrgotCIN1neMUy2yTbxJ_GhqCNwcw3fkBmVbHmHZ6DVjfW8y5kD_Hrtsk0nFdp2T2Tqa5GHqsKYZJHF70_N" 
           alt="Liga FP+40 Banner" 
@@ -54,66 +54,65 @@ export default function Home() {
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mb-4"
+            className="mb-2"
           >
-            <span className="bg-secondary text-on-secondary px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg">Temporada 2026</span>
+            <span className="bg-secondary text-on-secondary px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">Temporada 2026</span>
           </motion.div>
           <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-6xl md:text-8xl font-headline font-black tracking-tighter text-white drop-shadow-2xl mb-4 italic uppercase"
+            className="text-3xl sm:text-5xl md:text-6xl font-headline font-black tracking-tighter text-white drop-shadow-2xl italic uppercase"
           >
             LIGA <span className="text-primary neon-glow-primary">FP+40</span>
           </motion.h1>
         </div>
       </section>
 
+      {/* Group Photo Section */}
+      <motion.section 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.3 }}
+        className="bg-surface p-2 md:p-4 rounded-2xl md:rounded-3xl border border-outline-variant/10 shadow-xl overflow-hidden"
+      >
+        <div className="aspect-[21/9] relative rounded-xl md:rounded-2xl overflow-hidden bg-surface-high group">
+          <img 
+            src={groupPhotoUrl} 
+            alt="Foto Grupal Liga FP+40" 
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      </motion.section>
+
       {/* News Ticker / Banner */}
       {news.length > 0 && (
-        <section className="relative bg-surface-high border-y border-primary/20 overflow-hidden py-4 shadow-2xl">
-          <div className="max-w-7xl mx-auto px-6 flex items-center gap-6">
-            <div className="flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full border border-primary/20 whitespace-nowrap">
-              <Bell size={16} className="animate-bounce" />
-              <span className="text-xs font-black uppercase tracking-widest">Últimas Noticias</span>
-            </div>
-            
-            <div className="flex-1 relative h-6 overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentNewsIndex}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -20, opacity: 0 }}
-                  className="absolute inset-0 flex items-center"
-                >
-                  <p className="text-sm md:text-base font-medium text-white/90 italic tracking-tight">
-                    {news[currentNewsIndex].text}
+        <section className="relative bg-surface-high border-y border-primary/20 overflow-hidden py-3 md:py-4 shadow-2xl">
+          <div className="flex whitespace-nowrap">
+            <motion.div
+              animate={{ x: ["0%", "-100%"] }}
+              transition={{ 
+                duration: news.length * 45, 
+                repeat: Infinity, 
+                ease: "linear" 
+              }}
+              className="flex gap-12 md:gap-24 items-center pr-12 md:pr-24"
+            >
+              {[...news, ...news, ...news].map((n, i) => (
+                <div key={`${n.id}-${i}`} className="flex items-center gap-3">
+                  <Bell size={14} className="text-primary" />
+                  <p className="text-sm md:text-base font-black text-white/90 italic tracking-tight uppercase">
+                    {n.text}
                   </p>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {news.length > 1 && (
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setCurrentNewsIndex(prev => (prev - 1 + news.length) % news.length)}
-                  className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button 
-                  onClick={() => setCurrentNewsIndex(prev => (prev + 1) % news.length)}
-                  className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            )}
+                  <div className="w-2 h-2 rounded-full bg-secondary/50 ml-4 md:ml-8" />
+                </div>
+              ))}
+            </motion.div>
           </div>
           
           {/* Animated Background Line */}
@@ -133,17 +132,17 @@ export default function Home() {
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-surface p-8 rounded-2xl border border-outline-variant/10 shadow-xl flex flex-col items-center justify-center text-center group hover:border-secondary/30 transition-all"
+          className="bg-surface p-6 md:p-8 rounded-2xl border border-outline-variant/10 shadow-xl flex flex-col items-center justify-center text-center group hover:border-secondary/30 transition-all"
         >
-          <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-            <Clock size={32} className="text-secondary animate-pulse" />
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-secondary/10 rounded-full flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform">
+            <Clock size={24} className="text-secondary animate-pulse md:w-8 md:h-8" />
           </div>
-          <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-2">Hora Oficial de la Liga</h3>
-          <div className="text-6xl font-headline font-black text-white tabular-nums tracking-tighter mb-4">
+          <h3 className="text-[10px] md:text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-2">Hora Oficial</h3>
+          <div className="text-4xl md:text-6xl font-headline font-black text-white tabular-nums tracking-tighter mb-4">
             {formatTime(currentTime)}
           </div>
-          <p className="text-xs text-on-surface-variant font-medium">
-            Sincronización de partidos: <span className="text-primary font-bold">19:30 en punto</span>
+          <p className="text-[10px] md:text-xs text-on-surface-variant font-medium">
+            Sincronización: <span className="text-primary font-bold">19:30 HS</span>
           </p>
         </motion.div>
 
@@ -152,15 +151,15 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="lg:col-span-2 bg-surface p-8 rounded-2xl border border-outline-variant/10 shadow-xl"
+          className="lg:col-span-2 bg-surface p-6 md:p-8 rounded-2xl border border-outline-variant/10 shadow-xl"
         >
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-headline font-bold flex items-center gap-3">
-              <CalendarIcon size={24} className="text-primary" />
+          <div className="flex items-center justify-between mb-6 md:mb-8">
+            <h3 className="text-lg md:text-xl font-headline font-bold flex items-center gap-2 md:gap-3">
+              <CalendarIcon size={20} className="text-primary md:w-6 md:h-6" />
               {isLeagueFinished ? 'Clasificación Final' : 'Próxima Jornada'}
             </h3>
-            <span className="bg-primary/10 text-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
-              {isLeagueFinished ? 'Liga Finalizada' : 'Jornada 01'}
+            <span className="bg-primary/10 text-primary text-[8px] md:text-[10px] font-bold px-2 py-0.5 md:px-3 md:py-1 rounded-full uppercase tracking-widest">
+              {isLeagueFinished ? 'Finalizada' : 'Jornada 01'}
             </span>
           </div>
 
@@ -256,12 +255,10 @@ export default function Home() {
       </div>
 
       {/* Stats Summary */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <section className="grid grid-cols-2 gap-6">
         {[
           { label: 'Jugadores', value: teams.length * 2, icon: Users, color: 'text-primary' },
           { label: 'Equipos', value: teams.length, icon: Trophy, color: 'text-secondary' },
-          { label: 'Sedes', value: '01', icon: MapPin, color: 'text-on-surface' },
-          { label: 'Partidos', value: '00', icon: Activity, color: 'text-on-surface-variant' }
         ].map((stat, i) => (
           <motion.div
             key={stat.label}

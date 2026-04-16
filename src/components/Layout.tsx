@@ -58,11 +58,11 @@ export default function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-64 flex flex-col min-h-screen w-full overflow-x-hidden">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-outline-variant/10 px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold tracking-tighter text-primary">
+        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-outline-variant/10 px-4 md:px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-4 overflow-hidden">
+            <h2 className="text-xl md:text-2xl font-bold tracking-tighter text-primary truncate">
               {navItems.find(item => item.path === location.pathname)?.label || 'Liga FP+40'}
             </h2>
           </div>
@@ -95,7 +95,7 @@ export default function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6 pb-24 md:pb-6">
+        <main className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
           {children}
         </main>
 

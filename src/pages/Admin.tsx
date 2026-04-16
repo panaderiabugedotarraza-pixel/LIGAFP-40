@@ -1,7 +1,9 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Cropper from 'react-easy-crop';
 import { useLeague } from '../context/LeagueContext';
+import { auth, signInWithGoogle, logout } from '../lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { 
   Users, 
   Trophy, 
@@ -22,8 +24,61 @@ import {
   Lock,
   Camera,
   Edit2,
-  RefreshCw
+  RefreshCw,
+  LogOut
 } from 'lucide-react';
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: any;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      let message = "Algo salió mal.";
+      try {
+        const errObj = JSON.parse(this.state.error.message);
+        if (errObj.error.includes("Missing or insufficient permissions")) {
+          message = "No tienes permisos para realizar esta acción. Asegúrate de haber iniciado sesión con la cuenta de administrador correcta.";
+        }
+      } catch (e) {
+        // Not a JSON error
+      }
+      return (
+        <div className="p-8 text-center bg-surface rounded-2xl border border-error-dim/20">
+          <h2 className="text-2xl font-headline font-bold text-error-dim mb-4">Error de Aplicación</h2>
+          <p className="text-on-surface-variant mb-6">{message}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-primary text-on-primary px-6 py-2 rounded-xl font-bold"
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function Admin() {
   const { 
@@ -38,14 +93,27 @@ export default function Admin() {
     removeReplacement,
     seedTestData,
     addNews,
-    removeNews
+    removeNews,
+    groupPhotoUrl,
+    updateGroupPhoto
   } = useLeague();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loginData, setLoginData] = useState({ username: '', password: '' });
-  const [loginError, setLoginError] = useState('');
+  
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const admins = ['ibugedo@gmail.com', 'rodgarciac@gmail.com'];
+  const isAdmin = user?.email && admins.includes(user.email);
 
   const [showRegistration, setShowRegistration] = useState(false);
-  const [regType, setRegType] = useState<'player' | 'replacement'>('player');
+  const [regType, setRegType] = useState<'player' | 'replacement' | 'group'>('player');
   const [newNewsText, setNewNewsText] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
@@ -107,19 +175,33 @@ export default function Admin() {
         setPhoto(croppedImage);
         setShowCropper(false);
         setTempPhoto(null);
+        
+        // If it's a group photo, update it immediately
+        if (regType === 'group' && croppedImage) {
+          await updateGroupPhoto(croppedImage);
+          alert('¡Foto grupal actualizada con éxito!');
+          setPhoto(null);
+        }
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginData.username === 'admin' && loginData.password === 'liga40') {
-      setIsAuthenticated(true);
-      setLoginError('');
-    } else {
-      setLoginError('Credenciales incorrectas');
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error("Login error", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout error", error);
     }
   };
 
@@ -139,24 +221,29 @@ export default function Admin() {
     }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (regType === 'player') {
-      registerPlayer({ ...formData, photo });
+      await registerPlayer({ ...formData, photo });
       alert('Jugador registrado internamente con éxito.');
-    } else {
-      registerReplacement({ fullName: formData.fullName, phone: formData.phone, photo });
+    } else if (regType === 'replacement') {
+      await registerReplacement({ fullName: formData.fullName, phone: formData.phone, photo });
       alert('Jugador de reemplazo registrado con éxito.');
+    } else if (regType === 'group') {
+      if (photo) {
+        await updateGroupPhoto(photo);
+        alert('Foto grupal actualizada con éxito.');
+      }
     }
     setFormData({ fullName: '', age: '', phone: '', teamName: '', position: 'Drive' });
     setPhoto(null);
     setShowRegistration(false);
   };
 
-  const handleAddNews = (e: React.FormEvent) => {
+  const handleAddNews = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newNewsText.trim()) {
-      addNews({ text: newNewsText, type: 'info' });
+      await addNews({ text: newNewsText, type: 'info' });
       setNewNewsText('');
     }
   };
@@ -173,67 +260,72 @@ export default function Admin() {
     { name: 'Andrés López', initial: 'AL', availability: 'Solo noches', status: 'En Partido', statusColor: 'bg-surface-highest text-on-surface-variant' }
   ];
 
-  if (!isAuthenticated) {
+  if (loading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <RefreshCw className="animate-spin text-primary" size={48} />
+      </div>
+    );
+  }
+
+  if (!user || !isAdmin) {
+    return (
+      <div className="max-w-md mx-auto mt-20">
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-surface p-8 rounded-2xl border border-outline-variant/20 w-full max-w-md shadow-2xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-surface p-8 rounded-3xl border border-outline-variant/10 shadow-2xl"
         >
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Lock size={32} className="text-primary" />
+          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Lock className="text-primary" size={32} />
           </div>
-          <h2 className="text-2xl font-headline font-bold text-center mb-8">Acceso Administrativo</h2>
-          
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Usuario</label>
-              <input 
-                type="text" 
-                required
-                value={loginData.username}
-                onChange={(e) => setLoginData({...loginData, username: e.target.value})}
-                className="w-full bg-background border border-outline-variant/20 rounded-lg p-4 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                placeholder="admin"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Contraseña</label>
-              <input 
-                type="password" 
-                required
-                value={loginData.password}
-                onChange={(e) => setLoginData({...loginData, password: e.target.value})}
-                className="w-full bg-background border border-outline-variant/20 rounded-lg p-4 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                placeholder="••••••••"
-              />
-            </div>
-            {loginError && <p className="text-error-dim text-xs font-bold text-center">{loginError}</p>}
+          <h2 className="text-2xl font-headline font-bold text-center mb-2">Panel de Control</h2>
+          <p className="text-on-surface-variant text-center mb-8 text-sm">
+            Inicia sesión con tu cuenta de administrador para gestionar la liga.
+          </p>
+
+          {!user ? (
             <button 
-              type="submit"
-              className="w-full bg-primary text-on-primary font-bold py-4 rounded-xl hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+              onClick={handleLogin}
+              className="w-full bg-primary text-on-primary font-headline font-black py-4 rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
             >
-              Iniciar Sesión
+              INICIAR SESIÓN CON GOOGLE
             </button>
-          </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-4 bg-error-dim/10 rounded-xl border border-error-dim/20 text-center">
+                <p className="text-error-dim text-sm font-bold">Acceso Denegado</p>
+                <p className="text-on-surface-variant text-xs mt-1">La cuenta {user.email} no tiene permisos de administrador.</p>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="w-full bg-surface-high text-on-surface font-headline font-bold py-4 rounded-xl border border-outline-variant/20 hover:bg-surface-highest transition-all flex items-center justify-center gap-3"
+              >
+                CERRAR SESIÓN
+              </button>
+            </div>
+          )}
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-10">
-      {/* Header with Logout */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-headline font-black tracking-tighter">PANEL DE <span className="text-primary">CONTROL</span></h2>
-        <button 
-          onClick={() => setIsAuthenticated(false)}
-          className="text-xs font-bold text-on-surface-variant hover:text-error-dim transition-colors uppercase tracking-widest"
-        >
-          Cerrar Sesión
-        </button>
-      </div>
+    <ErrorBoundary>
+      <div className="space-y-10">
+        {/* Header with Logout */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-headline font-black tracking-tighter">PANEL DE <span className="text-primary">CONTROL</span></h2>
+            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mt-1">Admin: {user.displayName} ({user.email})</p>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="text-xs font-bold text-on-surface-variant hover:text-error-dim transition-colors uppercase tracking-widest flex items-center gap-2"
+          >
+            <LogOut size={14} /> Cerrar Sesión
+          </button>
+        </div>
 
       {/* Metrics Grid */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -316,7 +408,7 @@ export default function Admin() {
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
-                        onClick={() => removeTeam(team.id)}
+                        onClick={async () => await removeTeam(team.id)}
                         className="p-2 hover:bg-error-dim/20 rounded-lg text-error-dim"
                       >
                         <Trash2 size={16} />
@@ -362,7 +454,7 @@ export default function Admin() {
                         <p className="text-sm text-on-surface">{n.text}</p>
                       </div>
                       <button 
-                        onClick={() => removeNews(n.id)}
+                        onClick={async () => await removeNews(n.id)}
                         className="p-2 text-on-surface-variant hover:text-error-dim transition-colors opacity-0 group-hover:opacity-100"
                       >
                         <Trash2 size={16} />
@@ -370,6 +462,42 @@ export default function Admin() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </section>
+
+          {/* Group Photo Management */}
+          <section className="bg-surface rounded-xl overflow-hidden shadow-xl">
+            <div className="p-6 bg-surface-high flex justify-between items-center">
+              <h4 className="font-headline font-bold text-xl">Imagen Grupal de Inicio</h4>
+              <Camera size={20} className="text-secondary" />
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="w-full aspect-[21/9] bg-surface-highest rounded-2xl overflow-hidden border-2 border-outline-variant/20 relative group shadow-inner">
+                <img 
+                  src={groupPhotoUrl} 
+                  alt="Foto Grupal Actual" 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="text-white text-sm font-bold uppercase tracking-widest">Vista Previa Actual</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col md:flex-row gap-4 items-center bg-surface-high/50 p-4 rounded-xl border border-outline-variant/10">
+                <div className="flex-1">
+                  <h5 className="font-bold text-sm mb-1">Actualizar Imagen</h5>
+                  <p className="text-xs text-on-surface-variant italic">
+                    Sube una foto panorámica (21:9) para que se vea perfecta en la pantalla de inicio.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => { setRegType('group'); handlePhotoClick(); }}
+                  className="w-full md:w-auto bg-secondary text-on-secondary px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-secondary/20"
+                >
+                  <Camera size={16} />
+                  Subir Nueva Foto
+                </button>
               </div>
             </div>
           </section>
@@ -415,7 +543,7 @@ export default function Admin() {
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
-                              onClick={() => removePendingPlayer(p.id)}
+                              onClick={async () => await removePendingPlayer(p.id)}
                               className="p-2 hover:bg-error-dim/20 rounded-lg text-error-dim transition-colors"
                             >
                               <Trash2 size={16} />
@@ -477,7 +605,7 @@ export default function Admin() {
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
-                              onClick={() => removeReplacement(r.id)}
+                              onClick={async () => await removeReplacement(r.id)}
                               className="p-2 hover:bg-error-dim/20 rounded-lg text-error-dim transition-colors"
                             >
                               <Trash2 size={16} />
@@ -516,6 +644,12 @@ export default function Admin() {
               >
                 Reemplazo
               </button>
+              <button 
+                onClick={() => setRegType('group')}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${regType === 'group' ? 'bg-surface-highest text-white' : 'bg-surface-high text-on-surface-variant'}`}
+              >
+                Foto Grupal
+              </button>
             </div>
             
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
@@ -531,11 +665,14 @@ export default function Admin() {
                   onClick={handlePhotoClick}
                   className="relative cursor-pointer group"
                 >
-                  <div className="w-20 h-20 rounded-xl bg-surface-highest flex items-center justify-center border border-dashed border-outline-variant group-hover:border-primary transition-all overflow-hidden">
+                  <div className={`w-20 h-20 rounded-xl bg-surface-highest flex items-center justify-center border border-dashed border-outline-variant group-hover:border-primary transition-all overflow-hidden ${regType === 'group' ? 'w-full aspect-[21/9] h-auto' : ''}`}>
                     {photo ? (
                       <img src={photo} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
-                      <Camera size={24} className="text-on-surface-variant" />
+                      <div className="flex flex-col items-center gap-2">
+                        <Camera size={24} className="text-on-surface-variant" />
+                        {regType === 'group' && <span className="text-[8px] font-bold uppercase text-on-surface-variant">Click para subir foto grupal</span>}
+                      </div>
                     )}
                   </div>
                   <div className="absolute -bottom-1 -right-1 bg-primary text-on-primary p-1 rounded-md shadow-lg">
@@ -544,82 +681,86 @@ export default function Admin() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Nombre Completo</label>
-                <input 
-                  type="text" 
-                  required
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                  className="w-full bg-background border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Nombre del jugador"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {regType === 'player' && (
+              {regType !== 'group' && (
+                <>
                   <div>
-                    <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Edad</label>
+                    <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Nombre Completo</label>
                     <input 
-                      type="number" 
+                      type="text" 
                       required
-                      value={formData.age}
-                      onChange={(e) => setFormData({...formData, age: e.target.value})}
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                       className="w-full bg-background border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
-                      placeholder="40"
+                      placeholder="Nombre del jugador"
                     />
                   </div>
-                )}
-                <div className={regType === 'player' ? '' : 'col-span-2'}>
-                  <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Teléfono</label>
-                  <input 
-                    type="tel" 
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="w-full bg-background border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="+34..."
-                  />
-                </div>
-              </div>
-              {regType === 'player' && (
-                <div>
-                  <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Nombre del Equipo</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={formData.teamName}
-                    onChange={(e) => setFormData({...formData, teamName: e.target.value})}
-                    className="w-full bg-background border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Nombre del equipo"
-                  />
-                </div>
-              )}
-              {regType === 'player' && (
-                <div>
-                  <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Posición (Perfil Técnico)</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormData({...formData, position: 'Drive'})}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all ${formData.position === 'Drive' ? 'bg-primary text-background' : 'bg-surface-highest text-on-surface-variant hover:bg-surface-high'}`}
-                    >
-                      Drive
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({...formData, position: 'Revés'})}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all ${formData.position === 'Revés' ? 'bg-primary text-background' : 'bg-surface-highest text-on-surface-variant hover:bg-surface-high'}`}
-                    >
-                      Revés
-                    </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    {regType === 'player' && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Edad</label>
+                        <input 
+                          type="number" 
+                          required
+                          value={formData.age}
+                          onChange={(e) => setFormData({...formData, age: e.target.value})}
+                          className="w-full bg-background border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                          placeholder="40"
+                        />
+                      </div>
+                    )}
+                    <div className={regType === 'player' ? '' : 'col-span-2'}>
+                      <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Teléfono</label>
+                      <input 
+                        type="tel" 
+                        required
+                        value={formData.phone}
+                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        className="w-full bg-background border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                        placeholder="+34..."
+                      />
+                    </div>
                   </div>
-                </div>
+                  {regType === 'player' && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Nombre del Equipo</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={formData.teamName}
+                        onChange={(e) => setFormData({...formData, teamName: e.target.value})}
+                        className="w-full bg-background border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary"
+                        placeholder="Nombre del equipo"
+                      />
+                    </div>
+                  )}
+                  {regType === 'player' && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-widest">Posición (Perfil Técnico)</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormData({...formData, position: 'Drive'})}
+                          className={`py-2 rounded-lg text-xs font-bold transition-all ${formData.position === 'Drive' ? 'bg-primary text-background' : 'bg-surface-highest text-on-surface-variant hover:bg-surface-high'}`}
+                        >
+                          Drive
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({...formData, position: 'Revés'})}
+                          className={`py-2 rounded-lg text-xs font-bold transition-all ${formData.position === 'Revés' ? 'bg-primary text-background' : 'bg-surface-highest text-on-surface-variant hover:bg-surface-high'}`}
+                        >
+                          Revés
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               <button 
                 type="submit"
                 className="w-full bg-secondary text-on-secondary font-bold py-3 rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 mt-4"
               >
-                Registrar Jugador <ArrowRight size={16} />
+                {regType === 'group' ? 'Actualizar Foto Grupal' : 'Registrar Jugador'} <ArrowRight size={16} />
               </button>
             </form>
           </div>
@@ -649,12 +790,12 @@ export default function Admin() {
       </div>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-8 right-8 z-50">
+      <div className="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-50">
         <button 
           onClick={() => setShowRegistration(true)}
-          className="bg-secondary text-on-secondary h-16 w-16 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+          className="bg-secondary text-on-secondary h-14 w-14 md:h-16 md:w-16 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
         >
-          <Plus size={32} strokeWidth={3} />
+          <Plus size={28} className="md:w-8 md:h-8" strokeWidth={3} />
         </button>
       </div>
 
@@ -682,80 +823,89 @@ export default function Admin() {
                 </button>
               </div>
               <div className="p-8">
-                <p className="text-on-surface-variant text-sm mb-6">Completa la ficha técnica del jugador para el registro oficial de la liga.</p>
+                <p className="text-on-surface-variant text-sm mb-6">
+                  {regType === 'group' 
+                    ? 'Actualiza la foto oficial que se muestra en la página de inicio.' 
+                    : 'Completa la ficha técnica del jugador para el registro oficial de la liga.'}
+                </p>
                 <form onSubmit={handleRegisterSubmit} className="space-y-6">
                   <div className="flex justify-center mb-6">
                     <div 
                       onClick={handlePhotoClick}
-                      className="relative cursor-pointer group"
+                      className="relative cursor-pointer group w-full"
                     >
-                      <div className="w-24 h-24 rounded-2xl bg-surface-highest flex items-center justify-center border-2 border-dashed border-outline-variant group-hover:border-primary transition-all overflow-hidden shadow-inner">
+                      <div className={`rounded-2xl bg-surface-highest flex items-center justify-center border-2 border-dashed border-outline-variant group-hover:border-primary transition-all overflow-hidden shadow-inner ${regType === 'group' ? 'aspect-[21/9] w-full' : 'w-24 h-24 mx-auto'}`}>
                         {photo ? (
                           <img src={photo} alt="Preview" className="w-full h-full object-cover" />
                         ) : (
-                          <Camera size={32} className="text-on-surface-variant" />
+                          <div className="flex flex-col items-center gap-2">
+                            <Camera size={regType === 'group' ? 48 : 32} className="text-on-surface-variant" />
+                            {regType === 'group' && <span className="text-[10px] font-bold uppercase text-on-surface-variant">Click para subir foto grupal</span>}
+                          </div>
                         )}
                       </div>
-                      <div className="absolute -bottom-2 -right-2 bg-primary text-on-primary p-2 rounded-lg shadow-lg">
+                      <div className={`absolute bg-primary text-on-primary p-2 rounded-lg shadow-lg ${regType === 'group' ? 'bottom-2 right-2' : '-bottom-2 -right-2'}`}>
                         <Plus size={16} />
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Nombre Completo</label>
-                      <input 
-                        type="text" 
-                        required
-                        value={formData.fullName}
-                        onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                        className="w-full bg-background border border-outline-variant/20 rounded-xl p-4 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                        placeholder="Ej. Ricardo Montenegro"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                  {regType !== 'group' && (
+                    <div className="space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Edad</label>
+                        <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Nombre Completo</label>
                         <input 
-                          type="number" 
+                          type="text" 
                           required
-                          value={formData.age}
-                          onChange={(e) => setFormData({...formData, age: e.target.value})}
+                          value={formData.fullName}
+                          onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                           className="w-full bg-background border border-outline-variant/20 rounded-xl p-4 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                          placeholder="40"
+                          placeholder="Ej. Ricardo Montenegro"
                         />
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Edad</label>
+                          <input 
+                            type="number" 
+                            required
+                            value={formData.age}
+                            onChange={(e) => setFormData({...formData, age: e.target.value})}
+                            className="w-full bg-background border border-outline-variant/20 rounded-xl p-4 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                            placeholder="40"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Teléfono</label>
+                          <input 
+                            type="tel" 
+                            required
+                            value={formData.phone}
+                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                            className="w-full bg-background border border-outline-variant/20 rounded-xl p-4 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                            placeholder="+34..."
+                          />
+                        </div>
+                      </div>
                       <div>
-                        <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Teléfono</label>
+                        <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Nombre del Equipo</label>
                         <input 
-                          type="tel" 
+                          type="text" 
                           required
-                          value={formData.phone}
-                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                          value={formData.teamName}
+                          onChange={(e) => setFormData({...formData, teamName: e.target.value})}
                           className="w-full bg-background border border-outline-variant/20 rounded-xl p-4 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                          placeholder="+34..."
+                          placeholder="Nombre del equipo"
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-widest">Nombre del Equipo</label>
-                      <input 
-                        type="text" 
-                        required
-                        value={formData.teamName}
-                        onChange={(e) => setFormData({...formData, teamName: e.target.value})}
-                        className="w-full bg-background border border-outline-variant/20 rounded-xl p-4 text-on-surface outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                        placeholder="Nombre del equipo"
-                      />
-                    </div>
-                  </div>
+                  )}
 
                   <button 
                     type="submit"
                     className="w-full bg-secondary text-on-secondary font-headline font-black text-lg py-5 rounded-xl shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4"
                   >
-                    Confirmar Registro <ArrowRight size={20} />
+                    {regType === 'group' ? 'Actualizar Foto Grupal' : 'Confirmar Registro'} <ArrowRight size={20} />
                   </button>
                 </form>
               </div>
@@ -798,12 +948,12 @@ export default function Admin() {
                   image={tempPhoto}
                   crop={crop}
                   zoom={zoom}
-                  aspect={1}
+                  aspect={regType === 'group' ? 21/9 : 1}
                   onCropChange={setCrop}
                   onCropComplete={onCropComplete}
                   onZoomChange={setZoom}
-                  cropShape="round"
-                  showGrid={false}
+                  cropShape={regType === 'group' ? 'rect' : 'round'}
+                  showGrid={regType === 'group'}
                 />
               </div>
 
@@ -845,6 +995,7 @@ export default function Admin() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
